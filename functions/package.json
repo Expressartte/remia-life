@@ -1,0 +1,29 @@
+{
+  "name": "remia-functions",
+  "version": "1.0.0",
+  "description": "Firebase Cloud Functions for Remia.life",
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "lint": "eslint --ext .ts src/"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.3.0",
+    "firebase-functions": "^5.0.1",
+    "openai": "^4.52.7",
+    "@google/generative-ai": "^0.15.0",
+    "axios": "^1.7.3",
+    "form-data": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.11",
+    "typescript": "^5.5.3",
+    "firebase-functions-test": "^3.3.0"
+  }
+}

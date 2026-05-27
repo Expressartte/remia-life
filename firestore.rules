@@ -1,0 +1,190 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Funciones de ayuda
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    function isAdmin() {
+      // Verificamos si el usuario tiene rol de admin en su documento
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    function isStaff() {
+      // Admin o colaborador
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'collaborator'];
+    }
+
+    function isValidUser(data) {
+      // Coliving usa `name`; Remia usa `displayName`. Validamos cada campo solo si existe
+      // para que ambos esquemas pasen sin acoplar las reglas a un único shape.
+      return (!('name' in data) || data.name.size() < 100)
+             && (!('displayName' in data) || data.displayName.size() < 100)
+             && (!('email' in data) || data.email.size() < 100)
+             && (!('phone' in data) || data.phone.size() < 20);
+    }
+
+    function isValidMaintenance(data) {
+      return data.description.size() < 1000
+             && data.location.size() < 100;
+    }
+
+    // Reglas para Usuarios
+    match /users/{userId} {
+      // Cualquiera autenticado puede leer (para ver vecinos)
+      allow read: if isAuthenticated();
+      // Crear: dueño (signup) o staff (crear colaborador / admin operativo)
+      allow create: if (isOwner(userId) || isStaff()) && isValidUser(request.resource.data);
+      // Editar: dueño o staff (verifyPayment, addExtraCharge, etc.)
+      allow update: if (isOwner(userId) || isStaff()) && isValidUser(request.resource.data);
+      // Solo admin puede eliminar usuarios
+      allow delete: if isAdmin();
+
+      // ── Subcolecciones privadas del usuario (Remia: dreams, insights, ...) ──
+      // Solo el dueño puede acceder a sus propias subcolecciones
+      match /{subcollection}/{document=**} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+    }
+
+    // Reglas para Solicitudes de Mantenimiento
+    match /maintenance/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidMaintenance(request.resource.data);
+      allow update: if isStaff();
+      allow delete: if isStaff();
+    }
+
+    // Reglas para Gastos del coliving (admin + colaborador)
+    match /expenses/{expenseId} {
+      allow read, write: if isStaff();
+    }
+
+    // Reglas para Mensajes (admin + colaborador)
+    match /message_templates/{templateId} {
+      allow read, write: if isStaff();
+    }
+
+    // Reglas para Reservas (Bookings)
+    match /bookings/{bookingId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isStaff());
+      allow delete: if isStaff() || (resource.data.userId == request.auth.uid);
+    }
+
+    // Reglas para Recursos (Resources)
+    match /resources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    // Reglas para Casas (Houses)
+    match /houses/{houseId} {
+      allow read: if true;
+      allow write: if isStaff();
+
+      match /rooms/{roomId} {
+        allow read: if true;
+        allow write: if isStaff();
+      }
+    }
+
+    // Reglas para Reseñas (Reviews)
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isStaff();
+    }
+
+    // Reglas para Lista de Compras (Shopping List)
+    match /shopping_items/{itemId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isStaff() || (resource.data.addedBy == request.auth.uid);
+    }
+
+    // Reglas para Baños Compartidos
+    match /sharedBathrooms/{bathroomId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    // Reglas para Logs de Limpieza
+    match /cleaningLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isStaff();
+      allow update: if isAuthenticated();
+      allow delete: if isStaff();
+    }
+
+    // Reglas para Preguntas (Questions)
+    match /questions/{questionId} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+
+    // Reglas para Solicitudes (Applications)
+    match /applications/{applicationId} {
+      allow create: if true;
+      allow read, update, delete: if isStaff();
+    }
+
+    // Reglas para Contabilidad Personal (Admin y Colaborador, scoped por ownerId)
+    // Cada admin/colaborador ve y modifica solo SU propia contabilidad.
+    // El doc legacy 'accountingConfig/settings' lo puede leer/escribir cualquier admin
+    // para que la migración one-shot funcione.
+    match /accountingConfig/{docId} {
+      // Admins pueden leer cualquier doc (incluye el legacy 'settings' para migración).
+      // Colaboradores solo leen el suyo (docId == su uid).
+      allow read: if isAdmin() || (isStaff() && docId == request.auth.uid);
+      // Admins escriben en cualquier doc (para poder marcar el legacy como migrado).
+      // Colaboradores solo escriben en el suyo.
+      allow write: if isAdmin() || (isStaff() && docId == request.auth.uid);
+    }
+    match /accountingExpenses/{expenseId} {
+      // Lectura: admin o colaborador (filtran por ownerId client-side)
+      allow read: if isStaff();
+      // Crear: solo si el doc lleva tu ownerId
+      allow create: if isStaff() && request.resource.data.ownerId == request.auth.uid;
+      // Modificar/borrar: solo si el doc te pertenece
+      allow update, delete: if isStaff() && resource.data.ownerId == request.auth.uid;
+      // Migración: admin puede asignar ownerId a docs legacy sin dueño
+      allow update: if isAdmin() && !('ownerId' in resource.data);
+    }
+    match /debtPayments/{paymentId} {
+      allow read: if isStaff();
+      allow create: if isStaff() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isStaff() && resource.data.ownerId == request.auth.uid;
+      allow update: if isAdmin() && !('ownerId' in resource.data);
+    }
+    match /debtAccounts/{accountId} {
+      allow read: if isStaff();
+      allow create: if isStaff() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isStaff() && resource.data.ownerId == request.auth.uid;
+      allow update: if isAdmin() && !('ownerId' in resource.data);
+    }
+
+    // ── Remia: sonidos ambientales comunitarios ──────────────────────────────
+    // Lectura: cualquier autenticado (todos pueden ver la biblioteca).
+    // Escritura: solo Admin SDK (Cloud Functions). El cliente nunca crea estos
+    //            documentos directamente; todo pasa por generateAmbientSound.
+    match /ambient_sounds/{soundId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Solo Cloud Functions
+
+      // Subcolección de reports: el cliente puede leer/escribir SU PROPIO report
+      // (para evitar reportar dos veces). Pero el incremento del contador y el
+      // auto-flag los hace la Cloud Function vía Admin SDK.
+      match /reports/{reporterUid} {
+        allow read: if isAuthenticated() && request.auth.uid == reporterUid;
+        allow write: if false; // Solo Cloud Functions
+      }
+    }
+  }
+}

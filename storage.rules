@@ -1,0 +1,65 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper functions
+    function isValidImage() {
+      return request.resource.size < 5 * 1024 * 1024 // Max 5MB
+             && request.resource.contentType.matches('image/.*');
+    }
+
+    // Avatares: Cualquiera puede verlos, solo el dueño sube
+    match /profile_images/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId && isValidImage();
+    }
+
+    // Comprobantes de pago: Solo dueño y admin ven
+    match /receipts/{userId}/{fileName} {
+      allow read: if request.auth != null && (request.auth.uid == userId || firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'collaborator']);
+      allow write: if request.auth != null && request.auth.uid == userId && isValidImage();
+    }
+
+    // Documentos de identidad: Privado (solo admin y dueño)
+    match /documents/{userId}/{fileName} {
+      allow read: if request.auth != null && (request.auth.uid == userId || firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'collaborator']);
+      allow write: if request.auth != null && request.auth.uid == userId && isValidImage();
+    }
+
+    // Casas y Habitaciones: Público lectura, solo admin escritura
+    match /houses/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'collaborator']; // Admin trusted, no strict limit needed but good practice
+    }
+
+    // ── Remia: audio de sueños ──────────────────────────────────────────────
+    // Path: users/{userId}/dreams/{dreamId}/{fileName}
+    // Solo el dueño puede leer/escribir/borrar su propio audio (máx. 20 MB)
+    match /users/{userId}/dreams/{dreamId}/{fileName} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.contentType.matches('audio/.*')
+                   && request.resource.size <= 20 * 1024 * 1024;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── Remia: TTS genérico (meditaciones, narraciones de fase, etc.) ───────
+    // Path: users/{userId}/tts/{allPaths=**}
+    // Escritura solo desde el servidor (Cloud Function via Admin SDK).
+    // Lectura solo del propio usuario.
+    match /users/{userId}/tts/{allPaths=**} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false; // Solo Admin SDK (Cloud Functions)
+    }
+
+    // ── Remia: Sonidos ambientales (compartidos entre todos los usuarios) ─────
+    // Path: ambient-sounds/{fileName}
+    // Lectura pública (cualquier usuario autenticado).
+    // Escritura solo desde el servidor (Cloud Function / Admin SDK).
+    match /ambient-sounds/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if false; // Solo Admin SDK (Cloud Functions / scripts)
+    }
+  }
+}

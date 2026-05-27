@@ -1,0 +1,46 @@
+node_modules/
+.expo/
+dist/
+web-build/
+
+# Credenciales — nunca a git
+.env
+*.plist
+google-services.json
+GoogleService-Info.plist
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Firebase local cache (deploys, emulators)
+.firebase/
+
+# Exports de datos / backups — NUNCA commitear (PII, hashes, secrets)
+users.json
+*-export.json
+*.firestore-export
+service-account*.json
+*-credentials.json
+
+# Documentos sueltos en root (no son fuente)
+*.docx
+*.pdf
+*.xlsx
+*.xls
+~$*
+
+# Tests / scratch files con respuestas de APIs
+openai_test.json
+*_test.json
+*.scratch
+
+# Local-only overrides
+*.local
+*.local.json
+.claude/settings.local.json
+.claude/worktrees/

@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(curl -s -I https://remia-life.web.app)",
+      "Bash(curl -s -I https://remia.life)",
+      "Bash(firebase hosting:channel:list --site remia-life)",
+      "Bash(firebase --version)",
+      "Bash(firebase functions:config:get)",
+      "Bash(firebase functions:log -n 80)",
+      "Bash(firebase hosting:channel:list)",
+      "Bash(firebase functions:log -n 600)",
+      "Read(//c/Users/Think2025/AppData/Roaming/firebase-tools-nodejs-config/**)",
+      "Read(//c/Users/Think2025/.config/configstore//**)",
+      "Bash(firebase login:list)",
+      "Bash(python3 -c \"import sys, json; d=json.load\\(sys.stdin\\); t=d.get\\('tokens', {}\\); print\\('refresh:', 'yes' if t.get\\('refresh_token'\\) else 'no'\\); print\\('access expires:', t.get\\('expires_at'\\)\\); print\\('client_id present:', 'CLIENT_ID' in str\\(d\\) or 'client_id' in str\\(d\\) or bool\\(d.get\\('clientId'\\)\\)\\)\")",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s -X POST https://cloudfunctions.googleapis.com/v2/projects/banded-torus-434917-c1/locations/us-central1/functions/generateSocraticQuestions:getIamPolicy -H 'Authorization: Bearer __TRACKED_VAR__' -H 'Content-Type: application/json' -d '{}')"
+    ]
+  }
+}

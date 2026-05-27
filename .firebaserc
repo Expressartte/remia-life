@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "ubuntu-coliving",
+    "remia": "banded-torus-434917-c1"
+  },
+  "targets": {},
+  "etags": {}
+}
