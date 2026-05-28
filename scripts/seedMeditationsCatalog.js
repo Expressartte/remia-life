@@ -8,11 +8,16 @@
  * if already present.
  *
  * Usage:
- *   node scripts/seedMeditationsCatalog.js --dry-run         # validate only, no writes
- *   node scripts/seedMeditationsCatalog.js --project remia   # validate + write
+ *   node scripts/seedMeditationsCatalog.js --dry-run    # validate only, no writes
  *
- * Requires firebase-admin (already a project dependency) and credentials
- * (Application Default Credentials or a service account).
+ *   # validate + write (PowerShell): set the service account first, then run.
+ *   # Use the REAL project ID, not the `remia` CLI alias (Admin SDK ignores aliases).
+ *   $env:GOOGLE_APPLICATION_CREDENTIALS="C:/secrets/Remia/<sa>.json"
+ *   node scripts/seedMeditationsCatalog.js --project banded-torus-434917-c1
+ *
+ * Requires firebase-admin (already a project dependency) and a service account
+ * JSON pointed to by GOOGLE_APPLICATION_CREDENTIALS. If --project is omitted,
+ * the project is taken from the service account credentials.
  */
 
 const fs = require('fs');

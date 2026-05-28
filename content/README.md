@@ -30,10 +30,16 @@ meditaciones de YouTube que consume Remia (colección Firestore `/meditations`).
    node scripts/seedMeditationsCatalog.js --dry-run
    ```
 
-3. **Sembrar a Firestore**:
+3. **Sembrar a Firestore** (con el service account como credencial):
    ```
-   node scripts/seedMeditationsCatalog.js --project remia
+   # PowerShell:
+   $env:GOOGLE_APPLICATION_CREDENTIALS="C:/secrets/Remia/<service-account>.json"
+   node scripts/seedMeditationsCatalog.js --project banded-torus-434917-c1
    ```
+   IMPORTANTE: usá el project ID REAL `banded-torus-434917-c1`, NO el alias
+   `remia`. El alias solo lo entiende el firebase CLI; el Admin SDK necesita el
+   ID real. (Si omitís `--project`, el script toma el project del service
+   account, que también funciona.)
 
 ## Agregar / quitar videos después
 
@@ -52,6 +58,8 @@ https://console.firebase.google.com/project/banded-torus-434917-c1/firestore/dat
 ## Requisitos
 
 - `firebase-admin` (ya es dependencia del proyecto).
-- Credenciales: Application Default Credentials (`gcloud auth application-default
-  login`) o un service account. El script usa `--project remia` para apuntar al
-  proyecto correcto (ver `.firebaserc`).
+- Credenciales: un service account JSON (Firebase Console → Configuración →
+  Cuentas de servicio → Generar nueva clave privada), guardado FUERA del repo,
+  apuntado con la env var `GOOGLE_APPLICATION_CREDENTIALS`. La auth del firebase
+  CLI (la de los `firebase deploy`) NO sirve para el Admin SDK.
+- Project ID real: `banded-torus-434917-c1` (el alias `remia` es solo del CLI).
