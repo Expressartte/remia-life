@@ -170,6 +170,15 @@ service cloud.firestore {
       allow update: if isAdmin() && !('ownerId' in resource.data);
     }
 
+    // ── Remia: catálogo curado de meditaciones YouTube ───────────────────────
+    // Lectura: cualquier autenticado (catálogo común entre usuarios).
+    // Escritura: solo Admin SDK (seedMeditationsCatalog.js + validateMeditationsCatalog CF).
+    //            El cliente nunca escribe — todo entra por la pipeline curada.
+    match /meditations/{meditationId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
     // ── Remia: sonidos ambientales comunitarios ──────────────────────────────
     // Lectura: cualquier autenticado (todos pueden ver la biblioteca).
     // Escritura: solo Admin SDK (Cloud Functions). El cliente nunca crea estos
