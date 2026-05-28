@@ -12,11 +12,16 @@ import {
 import { db } from '../services/firebase';
 import { useAuth } from './useAuth';
 import { DreamDoc } from './useDreamAnalysis';
+import { DreamStatus } from '../types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface DreamListItem {
   id: string;
+  // 'complete' dreams have full analysis. 'captured' dreams have only the
+  // transcription — the user has not yet opted into the socratic deepening
+  // flow, so they're surfaced with a distinct CTA in the journal.
+  status: DreamStatus;
   date: string;                 // YYYY-MM-DD
   dream_title?: string;
   dominant_emotion: string;
@@ -46,7 +51,7 @@ const PAGE_SIZE = 20;
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function mapDocToItem(docSnap: DocumentSnapshot): DreamListItem {
-  const data = docSnap.data() as DreamDoc & { createdAt?: unknown };
+  const data = docSnap.data() as DreamDoc & { createdAt?: unknown; status?: DreamStatus };
   const analysis = data.analysis;
   const topArchetype =
     (analysis?.active_archetypes ?? [])
@@ -55,6 +60,9 @@ function mapDocToItem(docSnap: DocumentSnapshot): DreamListItem {
 
   return {
     id: docSnap.id,
+    // Default to 'complete' for documents that pre-date the captured-status
+    // pivot and never carried an explicit status field on the analysis path.
+    status: (data.status as DreamStatus) ?? 'complete',
     date: data.date ?? '',
     dream_title: data.dream_title || analysis?.dream_title,
     dominant_emotion: analysis?.dominant_emotion ?? '',
@@ -105,7 +113,10 @@ export function useDreamList() {
       if (!reset && cursorRef.current) {
         q = query(
           dreamsRef,
-          where('status', '==', 'complete'),
+          // Include both fully-analysed dreams and captured-but-not-deepened
+          // dreams so the journal surfaces the "deepen this" CTA next to the
+          // dream entry itself, not as a separate buried section.
+          where('status', 'in', ['complete', 'captured']),
           orderBy('createdAt', 'desc'),
           startAfter(cursorRef.current),
           limit(PAGE_SIZE),
@@ -113,7 +124,10 @@ export function useDreamList() {
       } else {
         q = query(
           dreamsRef,
-          where('status', '==', 'complete'),
+          // Include both fully-analysed dreams and captured-but-not-deepened
+          // dreams so the journal surfaces the "deepen this" CTA next to the
+          // dream entry itself, not as a separate buried section.
+          where('status', 'in', ['complete', 'captured']),
           orderBy('createdAt', 'desc'),
           limit(PAGE_SIZE),
         );
