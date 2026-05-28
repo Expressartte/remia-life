@@ -72,6 +72,10 @@ export interface UserSettings {
   nightReminderTime: string;
   socraticQuestionsCount: 1 | 2 | 3;
   analysisDepth: 'brief' | 'standard' | 'deep';
+  // When true, the morning flow routes straight to the socratic dialog after
+  // capture (legacy behaviour). When false (default), the user chooses
+  // "back to sleep" vs "deepen now" — supports the zero-friction wake-time UX.
+  askQuestionsAtWake: boolean;
 }
 
 export interface UserStreaks {
@@ -144,6 +148,8 @@ export type MorningStackParamList = {
 
 export type JournalStackParamList = {
   JournalHome: undefined;
+  // Allows the user to deepen a previously captured dream from the journal.
+  SocraticDialog: { dreamId: string };
   DreamAnalysis: { dreamId: string };
 };
 
@@ -171,6 +177,10 @@ export type DreamStatus =
   | 'recording'
   | 'pending_upload'
   | 'transcribing'
+  // Transcription is ready but the user has NOT yet opted into the socratic
+  // deepening flow. Wake-time UX: leaves the dream stored without burning
+  // generateSocraticQuestions CF until the user explicitly chooses to deepen.
+  | 'captured'
   | 'awaiting_questions'
   | 'answering_questions'
   | 'analyzing'
