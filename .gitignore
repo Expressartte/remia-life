@@ -44,3 +44,8 @@ openai_test.json
 *.local.json
 .claude/settings.local.json
 .claude/worktrees/
+
+# Catálogos de meditaciones llenos (output de curación, no fuente).
+# Solo content/meditations-catalog.template.json se versiona.
+content/meditations-catalog.json
+content/meditations-from-legacy.json

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "sleep-bodyscan-15",
+    "title": "Ejemplo: Body scan para dormir",
+    "subtitle": "Relajación progresiva de pies a cabeza",
+    "category": "sleep",
+    "categoryLabel": "Sueño profundo",
+    "mood_tags": ["noche", "relajacion", "insomnio"],
+    "duration_min": 15,
+    "youtube_id": "PLACEHOLDER_ID_1",
+    "verified_no_ads": false,
+    "language": "es",
+    "creator": "TODO: nombre del canal de YouTube",
+    "embed_allowed": true
+  },
+  {
+    "id": "recall-mild-intencion",
+    "title": "Ejemplo: Intención de recordar sueños (MILD)",
+    "subtitle": "Programa tu mente antes de dormir para recordar",
+    "category": "recall",
+    "categoryLabel": "Recall onírico",
+    "mood_tags": ["pre-sueno", "intencion", "memoria"],
+    "duration_min": 8,
+    "youtube_id": "PLACEHOLDER_ID_2",
+    "verified_no_ads": false,
+    "language": "es",
+    "creator": "TODO: nombre del canal de YouTube",
+    "embed_allowed": true
+  },
+  {
+    "id": "anxiety-respiracion-478",
+    "title": "Ejemplo: Respiración 4-7-8 para la ansiedad",
+    "subtitle": "Calma el sistema nervioso en minutos",
+    "category": "anxiety",
+    "categoryLabel": "Ansiedad",
+    "mood_tags": ["mente-acelerada", "respiracion", "calma"],
+    "duration_min": 6,
+    "youtube_id": "PLACEHOLDER_ID_3",
+    "verified_no_ads": false,
+    "language": "es",
+    "creator": "TODO: nombre del canal de YouTube",
+    "embed_allowed": true
+  }
+]
