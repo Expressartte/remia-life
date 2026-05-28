@@ -42,6 +42,9 @@ export const syncUserDocument = async (user: User): Promise<void> => {
         nightReminderTime: '22:00',
         socraticQuestionsCount: 3,
         analysisDepth: 'standard',
+        // Default false: wake-time UX lets the user choose to deepen instead of
+        // forcing the socratic dialog right after capture.
+        askQuestionsAtWake: false,
       },
       streaks: {
         morningCurrent: 0,
