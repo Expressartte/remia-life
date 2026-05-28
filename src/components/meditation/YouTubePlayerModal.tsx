@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import YoutubePlayer from 'react-native-youtube-iframe';
+import YouTubeEmbed from './YouTubeEmbed';
 import { Colors, FontSize, FontWeight, Spacing } from '../../styles/theme';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -124,19 +124,14 @@ export default function YouTubePlayerModal({
           )}
 
           {!errored && (
-            <YoutubePlayer
+            <YouTubeEmbed
               height={playerHeight}
               width={playerWidth}
-              play={playing}
+              playing={playing}
               videoId={youtubeId}
               onChangeState={onChangeState}
               onError={onError}
-              // Hardware layer on Android avoids occasional black frames.
-              webViewProps={
-                Platform.OS === 'android'
-                  ? { androidLayerType: 'hardware' }
-                  : undefined
-              }
+              onReady={() => setLoaded(true)}
             />
           )}
         </View>
