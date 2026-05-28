@@ -11,3 +11,5 @@ export { synthesizeSpeech } from './synthesizeSpeech';
 export { generateAmbientSound, reportAmbientSound, moderateAmbientSound } from './generateAmbientSound';
 export { generateBinauralSound } from './generateBinauralSound';
 export { recountTotalDreams } from './recountTotalDreams';
+export { recommendMeditation } from './recommendMeditation';
+export { validateMeditationsCatalog } from './validateMeditationsCatalog';

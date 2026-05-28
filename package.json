@@ -42,6 +42,8 @@
     "react-native-screens": "3.31.1",
     "react-native-svg": "15.2.0",
     "react-native-web": "^0.19.13",
+    "react-native-webview": "13.8.6",
+    "react-native-youtube-iframe": "^2.4.1",
     "wavefile": "^11.0.0"
   },
   "devDependencies": {

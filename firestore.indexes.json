@@ -15,6 +15,23 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "meditations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "unavailable", "order": "ASCENDING" },
+        { "fieldPath": "duration_min", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "meditations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "mood_tags", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "unavailable", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
