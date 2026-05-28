@@ -271,8 +271,13 @@ export const transcribeAudio = functions
     // ── 8. Guardar transcripción en Firestore ─────────────────────────────
 
     try {
+      // Land the dream in 'captured', NOT 'awaiting_questions'. The socratic
+      // dialog is now opt-in: the user decides at wake time whether to deepen
+      // or go back to sleep. The status flips to 'awaiting_questions' only when
+      // the user (or the askQuestionsAtWake preference) explicitly requests it,
+      // which is what triggers generateSocraticQuestions downstream.
       await updateDreamDoc(userId, dreamId, {
-        status: 'awaiting_questions',
+        status: 'captured',
         transcription: {
           text: transcription.text,
           language: transcription.language ?? 'es',
@@ -285,7 +290,7 @@ export const transcribeAudio = functions
         error: admin.firestore.FieldValue.delete(),
       });
 
-      functions.logger.info('[transcribeAudio] Firestore actualizado → awaiting_questions', {
+      functions.logger.info('[transcribeAudio] Firestore actualizado → captured', {
         userId,
         dreamId,
       });

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../styles/theme';
 import { DreamListItem } from '../../hooks/useDreamList';
 
@@ -89,31 +90,41 @@ interface DreamCardProps {
 }
 
 export default function DreamCard({ item, onPress }: DreamCardProps) {
+  const isCaptured = item.status === 'captured';
   const emoji = getEmotionEmoji(item.dominant_emotion);
   const color = intensityColor(item.emotional_intensity);
   const dateLabel = relativeDate(item.date);
   const title =
     item.dream_title ||
-    (item.dominant_emotion
+    (isCaptured
+      ? 'Sueño guardado'
+      : item.dominant_emotion
       ? item.dominant_emotion.charAt(0).toUpperCase() +
         item.dominant_emotion.slice(1)
       : 'Sueño sin título');
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, isCaptured && styles.cardCaptured]}
       onPress={onPress}
       activeOpacity={0.75}
     >
-      {/* Top row: date + emotion */}
+      {/* Top row: date + emotion (or "deepen" badge for captured) */}
       <View style={styles.topRow}>
         <Text style={styles.date}>{dateLabel}</Text>
-        <View style={styles.emotionBadge}>
-          <Text style={styles.emotionEmoji}>{emoji}</Text>
-          <Text style={[styles.emotionText, { color }]}>
-            {item.dominant_emotion || 'Emoción desconocida'}
-          </Text>
-        </View>
+        {isCaptured ? (
+          <View style={styles.deepenBadge}>
+            <Ionicons name="chatbubbles-outline" size={12} color={Colors.primary} />
+            <Text style={styles.deepenBadgeText}>Profundizar</Text>
+          </View>
+        ) : (
+          <View style={styles.emotionBadge}>
+            <Text style={styles.emotionEmoji}>{emoji}</Text>
+            <Text style={[styles.emotionText, { color }]}>
+              {item.dominant_emotion || 'Emoción desconocida'}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Title */}
@@ -121,30 +132,32 @@ export default function DreamCard({ item, onPress }: DreamCardProps) {
         {title}
       </Text>
 
-      {/* Archetype badge + intensity bar */}
-      <View style={styles.midRow}>
-        {item.dominant_archetype ? (
-          <View style={styles.archetypeBadge}>
-            <Text style={styles.archetypeText}>{item.dominant_archetype}</Text>
-          </View>
-        ) : (
-          <View />
-        )}
+      {/* Archetype + intensity bar (only meaningful for analysed dreams) */}
+      {!isCaptured && (
+        <View style={styles.midRow}>
+          {item.dominant_archetype ? (
+            <View style={styles.archetypeBadge}>
+              <Text style={styles.archetypeText}>{item.dominant_archetype}</Text>
+            </View>
+          ) : (
+            <View />
+          )}
 
-        {/* Intensity bar */}
-        <View style={styles.intensityContainer}>
-          <View
-            style={[
-              styles.intensityBar,
-              { width: `${Math.round(item.emotional_intensity * 100)}%`, backgroundColor: color },
-            ]}
-          />
+          {/* Intensity bar */}
+          <View style={styles.intensityContainer}>
+            <View
+              style={[
+                styles.intensityBar,
+                { width: `${Math.round(item.emotional_intensity * 100)}%`, backgroundColor: color },
+              ]}
+            />
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Transcription preview */}
       {item.transcriptionPreview ? (
-        <Text style={styles.preview} numberOfLines={2}>
+        <Text style={styles.preview} numberOfLines={isCaptured ? 3 : 2}>
           {item.transcriptionPreview}
         </Text>
       ) : null}
@@ -163,6 +176,27 @@ const styles = StyleSheet.create({
     padding: Spacing.base,
     marginBottom: Spacing.md,
     gap: Spacing.sm,
+  },
+  // Subtle visual hint: captured dreams use the primary tint on the border
+  // to invite the user to tap and deepen, without making the card noisy.
+  cardCaptured: {
+    borderColor: Colors.primary,
+    borderStyle: 'dashed',
+  },
+  deepenBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.primaryDim,
+    borderRadius: Radius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  deepenBadgeText: {
+    fontSize: FontSize.xs,
+    color: Colors.primary,
+    fontWeight: FontWeight.semibold,
+    letterSpacing: 0.3,
   },
   topRow: {
     flexDirection: 'row',

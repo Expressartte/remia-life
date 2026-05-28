@@ -178,15 +178,22 @@ export default function JournalScreen({ navigation }: Props) {
   }, [refresh]);
 
   const navigateToDream = useCallback(
-    (dreamId: string) => {
-      navigation.navigate('DreamAnalysis', { dreamId });
+    (item: DreamListItem) => {
+      // Captured dreams haven't been deepened yet — tapping the card opens
+      // the socratic dialog so the user can profundize. Analysed dreams go
+      // to the full DreamAnalysis screen as before.
+      if (item.status === 'captured') {
+        navigation.navigate('SocraticDialog', { dreamId: item.id });
+      } else {
+        navigation.navigate('DreamAnalysis', { dreamId: item.id });
+      }
     },
     [navigation],
   );
 
   const renderItem = useCallback(
     ({ item }: { item: DreamListItem }) => (
-      <DreamCard item={item} onPress={() => navigateToDream(item.id)} />
+      <DreamCard item={item} onPress={() => navigateToDream(item)} />
     ),
     [navigateToDream],
   );

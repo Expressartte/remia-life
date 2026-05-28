@@ -24,6 +24,7 @@ import {
   doc,
   onSnapshot,
   serverTimestamp,
+  updateDoc,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../hooks/useAuth';
@@ -336,38 +337,71 @@ function UploadingView({ progress, isOffline }: UploadingViewProps) {
 interface DoneViewProps {
   dreamId: string;
   dreamStatus: DreamStatus | null;
-  onStartDialog: () => void;
+  onBackToSleep: () => void;
+  onDeepenNow: (dreamId: string) => void;
 }
-function DoneView({ dreamId, dreamStatus, onStartDialog }: DoneViewProps) {
-  const isReady =
+function DoneView({ dreamId, dreamStatus, onBackToSleep, onDeepenNow }: DoneViewProps) {
+  // Once the dream is in 'captured', offer the user a deliberate choice
+  // between rolling over and going back to sleep, or pushing into the
+  // socratic dialog right now while the dream is still fresh.
+  const isCaptured = dreamStatus === 'captured';
+  // Legacy fallback: dreams created before the CF redeploy land directly in
+  // 'awaiting_questions'. Surface the original single CTA in that case.
+  const isReadyForDialog =
     dreamStatus === 'awaiting_questions' || dreamStatus === 'answering_questions';
+  const stillTranscribing = !dreamStatus || dreamStatus === 'transcribing';
 
   return (
     <View style={styles.doneContainer}>
       <View style={styles.doneIconWrap}>
         <Ionicons name="checkmark-circle" size={56} color={Colors.success} />
       </View>
-      <Text style={styles.doneTitle}>¡Sueño capturado!</Text>
+      <Text style={styles.doneTitle}>¡Sueño guardado!</Text>
       <Text style={styles.doneSubtitle}>
-        {isReady
-          ? 'La transcripción está lista. Responde unas preguntas para profundizar en tu sueño.'
-          : 'Remia está transcribiendo tu relato. Esto puede tomar un momento.'}
+        {stillTranscribing
+          ? 'Remia está transcribiendo tu relato. Esto puede tomar un momento.'
+          : isCaptured
+          ? 'Tu sueño quedó en el diario. Podés volver a dormir tranquilo o profundizar ahora mientras todavía lo recordás.'
+          : 'La transcripción está lista. Responde unas preguntas para profundizar en tu sueño.'}
       </Text>
 
-      {isReady ? (
+      {stillTranscribing && (
+        <View style={styles.doneInfoPill}>
+          <Ionicons name="hourglass-outline" size={14} color={Colors.secondary} />
+          <Text style={styles.doneInfoText}>Transcribiendo...</Text>
+        </View>
+      )}
+
+      {isCaptured && (
+        <View style={styles.doneActions}>
+          <TouchableOpacity
+            style={styles.backToSleepButton}
+            onPress={onBackToSleep}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="moon-outline" size={18} color={Colors.textPrimary} />
+            <Text style={styles.backToSleepLabel}>Volver a dormir</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deepenNowButton}
+            onPress={() => onDeepenNow(dreamId)}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="chatbubbles-outline" size={18} color={Colors.textOnPrimary} />
+            <Text style={styles.deepenNowLabel}>Profundizar ahora</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {isReadyForDialog && (
         <TouchableOpacity
           style={styles.startDialogButton}
-          onPress={onStartDialog}
+          onPress={() => onDeepenNow(dreamId)}
           activeOpacity={0.85}
         >
           <Ionicons name="chatbubbles-outline" size={18} color={Colors.textOnPrimary} />
           <Text style={styles.startDialogLabel}>Comenzar entrevista</Text>
         </TouchableOpacity>
-      ) : (
-        <View style={styles.doneInfoPill}>
-          <Ionicons name="hourglass-outline" size={14} color={Colors.secondary} />
-          <Text style={styles.doneInfoText}>Transcribiendo...</Text>
-        </View>
       )}
     </View>
   );
@@ -386,21 +420,27 @@ export default function MorningScreen() {
   const [captureMode, setCaptureMode] = useState<'voice' | 'text'>('voice');
   const [submittingText, setSubmittingText] = useState(false);
 
+  // Dream ID for the text-input branch, parallel to uploader.dreamId for audio.
+  // The audio upload hook owns its own ID; for text capture we hold ours locally
+  // so the same DoneView/status listener machinery works for both branches.
+  const [capturedDreamId, setCapturedDreamId] = useState<string | null>(null);
+
   // ── Listener de estado del sueño (para saber cuándo la transcripción termina) ──
 
   const [dreamStatus, setDreamStatus] = useState<DreamStatus | null>(null);
 
   useEffect(() => {
-    if (!uploader.dreamId || !user) {
+    const activeDreamId = uploader.dreamId ?? capturedDreamId;
+    if (!activeDreamId || !user) {
       setDreamStatus(null);
       return;
     }
-    const dreamRef = doc(db, 'users', user.uid, 'dreams', uploader.dreamId);
+    const dreamRef = doc(db, 'users', user.uid, 'dreams', activeDreamId);
     const unsub = onSnapshot(dreamRef, (snap) => {
       if (snap.exists()) setDreamStatus(snap.data().status as DreamStatus);
     });
     return unsub;
-  }, [uploader.dreamId, user]);
+  }, [uploader.dreamId, capturedDreamId, user]);
 
   // ── Confirmar y subir audio ────────────────────────────────────────────────
 
@@ -454,7 +494,11 @@ export default function MorningScreen() {
           date: new Date().toISOString().slice(0, 10),
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-          status: 'awaiting_questions',
+          // Text dreams skip transcription and land directly in 'captured'.
+          // The user still sees the same DoneView with the deliberate choice
+          // "back to sleep" vs "deepen now" instead of being pushed into the
+          // socratic dialog.
+          status: 'captured',
           transcription: {
             text,
             language: 'es',
@@ -462,7 +506,7 @@ export default function MorningScreen() {
             transcribedAt: serverTimestamp(),
           },
         });
-        navigation.navigate('SocraticDialog', { dreamId: docRef.id });
+        setCapturedDreamId(docRef.id);
         setCaptureMode('voice'); // reset para la próxima vez
       } catch (err: any) {
         console.error('[MorningScreen] text dream save error', err);
@@ -474,7 +518,42 @@ export default function MorningScreen() {
         setSubmittingText(false);
       }
     },
-    [user, navigation],
+    [user],
+  );
+
+  // ── Volver a dormir / Profundizar ahora ───────────────────────────────────
+
+  const handleBackToSleep = useCallback(() => {
+    recorder.discardRecording();
+    uploader.reset();
+    setCapturedDreamId(null);
+    setCaptureMode('voice');
+    setDreamStatus(null);
+  }, [recorder, uploader]);
+
+  const handleDeepenNow = useCallback(
+    async (dreamId: string) => {
+      if (!user) return;
+      try {
+        // Promote captured → awaiting_questions, which is what useSocraticDialog
+        // listens for to trigger generateSocraticQuestions. No-op when the dream
+        // is already past 'captured' (legacy backend, already promoted, etc).
+        if (dreamStatus === 'captured') {
+          await updateDoc(doc(db, 'users', user.uid, 'dreams', dreamId), {
+            status: 'awaiting_questions',
+            updatedAt: serverTimestamp(),
+          });
+        }
+        navigation.navigate('SocraticDialog', { dreamId });
+      } catch (err: any) {
+        console.error('[MorningScreen] deepen status update error', err);
+        Alert.alert(
+          'No se pudo abrir el diálogo',
+          err?.message ?? 'Inténtalo de nuevo en un momento.',
+        );
+      }
+    },
+    [user, navigation, dreamStatus],
   );
 
   // ── Decidir qué vista renderizar ──────────────────────────────────────────
@@ -524,15 +603,16 @@ export default function MorningScreen() {
       );
     }
 
-    // Subida completada
-    if (uploader.uploadState === 'done' && uploader.dreamId) {
+    // Captura completada: audio recién subido o sueño escrito guardado.
+    // Ambos caminos comparten la misma DoneView.
+    const finalDreamId = uploader.dreamId ?? capturedDreamId;
+    if (finalDreamId && (uploader.uploadState === 'done' || capturedDreamId)) {
       return (
         <DoneView
-          dreamId={uploader.dreamId}
+          dreamId={finalDreamId}
           dreamStatus={dreamStatus}
-          onStartDialog={() => {
-            navigation.navigate('SocraticDialog', { dreamId: uploader.dreamId! });
-          }}
+          onBackToSleep={handleBackToSleep}
+          onDeepenNow={handleDeepenNow}
         />
       );
     }
@@ -1053,6 +1133,46 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.secondary,
     fontWeight: FontWeight.medium,
+  },
+  doneActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.md,
+    marginTop: Spacing.md,
+    flexWrap: 'wrap',
+  },
+  backToSleepButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.lg,
+    minHeight: MIN_TOUCH,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+  },
+  backToSleepLabel: {
+    fontSize: FontSize.base,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textPrimary,
+  },
+  deepenNowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.lg,
+    minHeight: MIN_TOUCH,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+  },
+  deepenNowLabel: {
+    fontSize: FontSize.base,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textOnPrimary,
   },
 
   // ── ERROR ─────────────────────────────────────────────────────────────────
