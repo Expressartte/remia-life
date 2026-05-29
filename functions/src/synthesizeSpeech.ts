@@ -12,15 +12,17 @@ const bucket = admin.storage().bucket();
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-type Provider = 'openai' | 'elevenlabs';
+// OpenAI-only. El campo `provider` se conserva por compat de clientes viejos
+// pero se ignora: ElevenLabs se removió al dejar de pagarlo (mayo 2026).
+type Provider = 'openai';
 
 interface SynthRequest {
   text: string;
   dreamId?: string;        // opcional: si se pasa, agrupa el cache bajo el sueño
   kind?: string;           // opcional: si se pasa (sin dreamId), agrupa bajo users/{uid}/tts/{kind}/...
-  provider?: Provider;     // default: 'openai'
-  voice?: string;          // override del default por provider
-  speed?: number;          // 0.25 - 4.0 para OpenAI; ignorado en ElevenLabs
+  provider?: string;       // legacy/ignorado: el servicio es OpenAI-only
+  voice?: string;          // override del default
+  speed?: number;          // 0.25 - 4.0 (OpenAI)
 }
 
 interface SynthResponse {
@@ -34,8 +36,6 @@ interface SynthResponse {
 
 const OPENAI_DEFAULT_VOICE = 'nova';     // femenina cálida, buena para narración
 const OPENAI_MODEL = 'tts-1';            // tts-1-hd cuesta el doble; tts-1 alcanza
-const ELEVENLABS_DEFAULT_VOICE = 'EXAVITQu4vr4xnSDxMaL'; // "Bella" — femenina suave
-const ELEVENLABS_MODEL = 'eleven_multilingual_v2';
 
 const MAX_TEXT_LENGTH = 4000;            // safety cap
 const STORAGE_AUDIO_PREFIX = 'tts';      // users/{uid}/dreams/{dreamId}/tts-{provider}.mp3
@@ -115,43 +115,6 @@ async function synthesizeWithOpenAI(
   return Buffer.from(await resp.arrayBuffer());
 }
 
-async function synthesizeWithElevenLabs(text: string, voiceId: string): Promise<Buffer> {
-  const apiKey = functions.config().elevenlabs?.key ?? process.env.ELEVENLABS_API_KEY;
-  if (!apiKey) {
-    throw new functions.https.HttpsError(
-      'failed-precondition',
-      'ELEVENLABS_API_KEY no configurada. Ejecuta: firebase functions:config:set elevenlabs.key="TU_KEY"'
-    );
-  }
-  const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'xi-api-key': apiKey,
-      'Content-Type': 'application/json',
-      Accept: 'audio/mpeg',
-    },
-    body: JSON.stringify({
-      text,
-      model_id: ELEVENLABS_MODEL,
-      voice_settings: {
-        stability: 0.55,
-        similarity_boost: 0.75,
-        style: 0.3,
-        use_speaker_boost: true,
-      },
-    }),
-  });
-  if (!resp.ok) {
-    const errBody = await resp.text();
-    throw new functions.https.HttpsError(
-      'internal',
-      `ElevenLabs API error ${resp.status}: ${errBody.slice(0, 200)}`
-    );
-  }
-  return Buffer.from(await resp.arrayBuffer());
-}
-
 // ─── Cloud Function ──────────────────────────────────────────────────────────
 
 export const synthesizeSpeech = functions
@@ -174,9 +137,8 @@ export const synthesizeSpeech = functions
       );
     }
 
-    const provider: Provider = data.provider === 'elevenlabs' ? 'elevenlabs' : 'openai';
-    const voice =
-      data.voice ?? (provider === 'openai' ? OPENAI_DEFAULT_VOICE : ELEVENLABS_DEFAULT_VOICE);
+    const provider: Provider = 'openai';
+    const voice = data.voice ?? OPENAI_DEFAULT_VOICE;
     const speed = data.speed ?? 1.0;
 
     const textHash = hashText(text, voice);
@@ -197,10 +159,7 @@ export const synthesizeSpeech = functions
       dreamId: data.dreamId ?? null,
     });
 
-    const audio =
-      provider === 'openai'
-        ? await synthesizeWithOpenAI(text, voice, speed)
-        : await synthesizeWithElevenLabs(text, voice);
+    const audio = await synthesizeWithOpenAI(text, voice, speed);
 
     await uploadAudio(storagePath, audio, textHash, provider);
 

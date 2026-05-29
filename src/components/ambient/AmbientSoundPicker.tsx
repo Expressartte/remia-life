@@ -6,11 +6,8 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-  Alert,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { httpsCallable } from 'firebase/functions';
 import {
   AMBIENT_SOUNDS,
   TIMER_OPTIONS,
@@ -24,12 +21,8 @@ import {
   FontWeight,
   Spacing,
   Radius,
-  MIN_TOUCH,
 } from '../../styles/theme';
 import { AmbientState } from '../../hooks/useAmbientSound';
-import { useCommunityAmbientSounds } from '../../hooks/useCommunityAmbientSounds';
-import { functions } from '../../services/firebase';
-import CreateAmbientSoundModal from './CreateAmbientSoundModal';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -56,46 +49,9 @@ function formatRemaining(ms: number): string {
 }
 
 const CATEGORIES: { key: AmbientCategory; label: string; icon: string }[] = [
-  { key: 'nature', label: 'Naturaleza', icon: 'leaf-outline' },
   { key: 'binaural', label: 'Ondas', icon: 'pulse-outline' },
   { key: 'noise', label: 'Ruido', icon: 'radio-outline' },
-  { key: 'community', label: 'Comunidad', icon: 'people-outline' },
 ];
-
-// Confirmación cross-plataforma (Alert.alert en RN no muestra botones en web)
-function confirmAsync(title: string, message: string): Promise<boolean> {
-  if (Platform.OS === 'web') {
-    return Promise.resolve(window.confirm(`${title}\n\n${message}`));
-  }
-  return new Promise(resolve => {
-    Alert.alert(title, message, [
-      { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
-      { text: 'Confirmar', style: 'destructive', onPress: () => resolve(true) },
-    ]);
-  });
-}
-
-async function handleReport(soundId: string): Promise<void> {
-  const ok = await confirmAsync(
-    'Reportar este sonido',
-    '¿Quieres reportar este sonido? Si recibe varios reportes, se ocultará automáticamente.',
-  );
-  if (!ok) return;
-  try {
-    const fn = httpsCallable<{ soundId: string }, { success: boolean; reportCount: number }>(
-      functions,
-      'reportAmbientSound',
-    );
-    await fn({ soundId });
-    if (Platform.OS === 'web') window.alert('Reporte enviado. Gracias.');
-    else Alert.alert('Reporte enviado', 'Gracias por avisarnos.');
-  } catch (err: any) {
-    console.error('[reportAmbientSound] error:', err);
-    const msg = err?.message ?? 'No se pudo enviar el reporte';
-    if (Platform.OS === 'web') window.alert(msg);
-    else Alert.alert('Error', msg);
-  }
-}
 
 // ─── Tarjeta de sonido ────────────────────────────────────────────────────────
 
@@ -105,14 +61,12 @@ function SoundCard({
   isLoading,
   onPress,
   onLongPress,
-  onReport,
 }: {
   sound: AmbientSound;
   isActive: boolean;
   isLoading: boolean;
   onPress: () => void;
   onLongPress: () => void;
-  onReport?: () => void;
 }) {
   return (
     <TouchableOpacity
@@ -138,27 +92,12 @@ function SoundCard({
         >
           {sound.title}
         </Text>
-        {sound.isCommunity && sound.creatorNickname ? (
-          <Text style={styles.cardCreator} numberOfLines={1}>
-            por {sound.creatorNickname}
-          </Text>
-        ) : (
-          <Text style={styles.cardSubtitle} numberOfLines={1}>
-            {sound.subtitle}
-          </Text>
-        )}
+        <Text style={styles.cardSubtitle} numberOfLines={1}>
+          {sound.subtitle}
+        </Text>
       </View>
       {sound.requiresHeadphones && (
         <Ionicons name="headset-outline" size={14} color={Colors.textTertiary} />
-      )}
-      {sound.isCommunity && onReport && (
-        <TouchableOpacity
-          onPress={onReport}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={styles.reportBtn}
-        >
-          <Ionicons name="flag-outline" size={13} color={Colors.textTertiary} />
-        </TouchableOpacity>
       )}
       {isActive && (
         <View style={[styles.activeDot, { backgroundColor: sound.color }]} />
@@ -222,14 +161,12 @@ export default function AmbientSoundPicker({
   onPreview,
   onTimerChange,
 }: Props) {
-  const [activeCategory, setActiveCategory] = useState<AmbientCategory>('nature');
-  const [createOpen, setCreateOpen] = useState(false);
-  const { sounds: communitySounds, loading: loadingCommunity } = useCommunityAmbientSounds();
+  const [activeCategory, setActiveCategory] = useState<AmbientCategory>('binaural');
 
-  const filteredSounds = useMemo(() => {
-    if (activeCategory === 'community') return communitySounds;
-    return AMBIENT_SOUNDS.filter(s => s.category === activeCategory);
-  }, [activeCategory, communitySounds]);
+  const filteredSounds = useMemo(
+    () => AMBIENT_SOUNDS.filter(s => s.category === activeCategory),
+    [activeCategory],
+  );
 
   const isPlaying = state === 'playing' || state === 'loading';
 
@@ -308,21 +245,6 @@ export default function AmbientSoundPicker({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.soundsRow}
       >
-        {/* CTA: crear sonido (solo en tab Comunidad) */}
-        {activeCategory === 'community' && (
-          <TouchableOpacity
-            style={styles.createCard}
-            onPress={() => setCreateOpen(true)}
-            activeOpacity={0.85}
-          >
-            <View style={styles.createIcon}>
-              <Ionicons name="add" size={26} color={Colors.primary} />
-            </View>
-            <Text style={styles.createLabel}>Crear sonido</Text>
-            <Text style={styles.createSubLabel}>con IA</Text>
-          </TouchableOpacity>
-        )}
-
         {filteredSounds.map(sound => (
           <SoundCard
             key={sound.id}
@@ -337,34 +259,9 @@ export default function AmbientSoundPicker({
               }
             }}
             onLongPress={() => onPreview(sound)}
-            onReport={sound.isCommunity ? () => handleReport(sound.id) : undefined}
           />
         ))}
-
-        {/* Estado vacío de comunidad */}
-        {activeCategory === 'community' && filteredSounds.length === 0 && (
-          <View style={styles.emptyCommunity}>
-            {loadingCommunity ? (
-              <ActivityIndicator size="small" color={Colors.textTertiary} />
-            ) : (
-              <Text style={styles.emptyCommunityText}>
-                Aún no hay sonidos de la comunidad. ¡Crea el primero!
-              </Text>
-            )}
-          </View>
-        )}
       </ScrollView>
-
-      {/* Modal de creación */}
-      <CreateAmbientSoundModal
-        visible={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={() => {
-          // El listener de Firestore actualizará la lista solo. Cambiamos al
-          // tab de comunidad para que el usuario vea su nuevo sonido.
-          setActiveCategory('community');
-        }}
-      />
 
       {/* Timer selector */}
       <View style={styles.timerSection}>

@@ -9,16 +9,6 @@ import { AmbientSound, TimerMinutes } from '../config/ambientSounds';
 
 export type AmbientState = 'idle' | 'loading' | 'playing' | 'error';
 
-interface GenerateRequest {
-  soundId: string;
-  prompt: string;
-  durationSeconds?: number;
-}
-interface GenerateResponse {
-  storagePath: string;
-  cached: boolean;
-}
-
 interface BinauralRequest {
   soundId: string;
   type: 'binaural' | 'noise';
@@ -62,7 +52,7 @@ const FADE_OUT_STEPS = 40;
  *
  * Características:
  * - Descarga el audio desde Firebase Storage
- * - Para sonidos de naturaleza, llama a `generateAmbientSound` la primera vez
+ * - Genera binaurales/ruido con `generateBinauralSound` la primera vez
  * - Loop continuo con `isLooping: true`
  * - Control de volumen (bajo durante narración, normal después)
  * - Timer con fade-out suave al finalizar
@@ -96,23 +86,6 @@ export function useAmbientSound() {
 
   // ── Resolver URL del audio ──────────────────────────────────────────────
   const resolveAudioUrl = useCallback(async (sound: AmbientSound): Promise<string> => {
-    // Para sonidos de naturaleza, generar con ElevenLabs
-    if (sound.elevenLabsPrompt) {
-      try {
-        const generate = httpsCallable<GenerateRequest, GenerateResponse>(
-          functions,
-          'generateAmbientSound'
-        );
-        await generate({
-          soundId: sound.id,
-          prompt: sound.elevenLabsPrompt,
-          durationSeconds: 22,
-        });
-      } catch (err) {
-        console.warn('[useAmbientSound] generate nature failed:', err);
-      }
-    }
-
     // Para binaurales, generar con Cloud Function
     if (BINAURAL_CONFIG[sound.id]) {
       try {

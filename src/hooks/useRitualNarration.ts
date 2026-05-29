@@ -28,8 +28,8 @@ interface PreloadedPhase {
 
 /**
  * Genera un texto de narración más completo para cada fase.
- * Cada bloque se mantiene corto (100-300 chars) para evitar el bug
- * de desincronización de velocidad de ElevenLabs con textos largos.
+ * Cada bloque se mantiene corto (100-300 chars): bloques cortos suenan más
+ * naturales con el TTS y permiten encadenar fases con silencios calculados.
  */
 function buildPhaseScript(
   phase: MeditationPhase,
@@ -172,7 +172,7 @@ export function useRitualNarration(
           const result = await synth({
             text: script,
             kind: `night-ritual-${dateKey}-${phase.id}`,
-            provider: 'elevenlabs',
+            provider: 'openai',
           });
           if (cancelled) return;
 

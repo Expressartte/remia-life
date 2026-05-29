@@ -8,7 +8,6 @@ export { sendEngagementNotifications } from './sendEngagementNotifications';
 export { generateNarrativeThreads } from './generateNarrativeThreads';
 export { generatePortrait } from './generatePortrait';
 export { synthesizeSpeech } from './synthesizeSpeech';
-export { generateAmbientSound, reportAmbientSound, moderateAmbientSound } from './generateAmbientSound';
 export { generateBinauralSound } from './generateBinauralSound';
 export { recountTotalDreams } from './recountTotalDreams';
 export { recommendMeditation } from './recommendMeditation';

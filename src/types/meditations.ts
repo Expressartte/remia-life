@@ -3,11 +3,11 @@ import { Timestamp } from 'firebase/firestore';
 // ─── Catálogo curado de meditaciones YouTube ──────────────────────────────────
 //
 // Este tipo describe los documentos de la colección global /meditations en
-// Firestore. Reemplaza el array estático en src/config/meditations.ts (que se
-// elimina en el agente de cleanup de ElevenLabs).
+// Firestore. Reemplazó al array estático de TTS (antes en src/config/meditations.ts,
+// removido en el cleanup de ElevenLabs).
 //
-// El catálogo lo curan humanos (ver content/CURATION_GUIDE.md cuando el agente
-// de curación lo deje listo) y se siembra vía scripts/seedMeditationsCatalog.js.
+// El catálogo lo curan humanos (ver content/CURATION_GUIDE.md) y se siembra vía
+// scripts/seedMeditationsCatalog.js.
 
 export type MeditationCategory =
   | 'sleep'      // body scan, descenso al sueño, cuenta regresiva
