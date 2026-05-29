@@ -178,22 +178,5 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if false;
     }
-
-    // ── Remia: sonidos ambientales comunitarios ──────────────────────────────
-    // Lectura: cualquier autenticado (todos pueden ver la biblioteca).
-    // Escritura: solo Admin SDK (Cloud Functions). El cliente nunca crea estos
-    //            documentos directamente; todo pasa por generateAmbientSound.
-    match /ambient_sounds/{soundId} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Solo Cloud Functions
-
-      // Subcolección de reports: el cliente puede leer/escribir SU PROPIO report
-      // (para evitar reportar dos veces). Pero el incremento del contador y el
-      // auto-flag los hace la Cloud Function vía Admin SDK.
-      match /reports/{reporterUid} {
-        allow read: if isAuthenticated() && request.auth.uid == reporterUid;
-        allow write: if false; // Solo Cloud Functions
-      }
-    }
   }
 }
